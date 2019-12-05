@@ -1,0 +1,55 @@
+version: '3.1'
+services:
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    restart: always
+    ports:
+      - "9092:9092"
+    deploy:
+      replicas: 3
+    environment:
+      - KAFKA_ADVERTISED_HOST_NAME= 127.0.0.1
+      - KAFKA_ADVERTISED_PORT= 9092
+      - KAFKA_ZOOKEEPER_CONNECT= zookeeper:2181
+      
+    depends_on:
+      - zookeeper
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+    restart: always
+    environment:
+      - KAFKA_ADVERTISED_HOST_NAME=zookeeper
+  mysql:
+    image: mysql:5.7
+    ports: 
+      - "3306:3306"
+    container_name: mysql-docker
+    restart: always
+    network_mode: host
+    environment:
+       MYSQL_USER: root
+       MYSQL_ROOT_PASSWORD: Root@123
+    entrypoint:
+      sh -c 
+      "echo 'CREATE DATABASE IF NOT EXISTS booking_service;' > /docker-entrypoint-initdb.d/init.sql;
+      /usr/local/bin/docker-entrypoint.sh --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      "
+    volumes:
+      - /db-data:/var/lib/mysql
+  spring:
+    image: spring-boot-sql
+    build: bookng-service/
+    restart: always
+    network_mode: host
+    container_name: spring-docker
+    depends_on: 
+      - zookeeper
+      - kafka
+      - mysql
+    ports: 
+      - 9090:9090
+    expose: 
+      - 9090
